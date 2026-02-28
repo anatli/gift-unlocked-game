@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>¡Feliz Cumpleaños!</title>
+    <style>
+        /* General Styles */
+        body { margin: 0; overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
+        canvas { display: block; background: linear-gradient(to bottom, #1e3c72, #2a5298); }
+        
+        /* UI Score Counter */
+        #ui-layer { 
+            position: absolute; top: 20px; width: 100%; text-align: center; 
+            color: #ffd700; font-size: 24px; font-weight: bold; pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Success/Win Screen */
+        #success-screen { 
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); color: white; text-align: center; 
+            justify-content: center; align-items: center; flex-direction: column; z-index: 100;
+            padding: 20px; box-sizing: border-box;
+        }
+
+        .highlight-text { color: #00d2ff; font-size: 1.2em; margin-bottom: 10px; }
+        .reveal-title { color: #ffd700; font-size: 2.5em; margin: 20px 0; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">Objetos encontrados: <span id="score-count">0</span>/10</div>
+    
+    <div id="success-screen">
+        <h1 style="color: #4cd137;">¡PRUEBA SUPERADA! 🏆</h1>
+        <p class="highlight-text">Has demostrado tener los reflejos necesarios para este regalo...</p>
+        <p>No es un código digital, ni una suscripción...</p>
+        <h2 class="reveal-title">✈️ ¡NOS VAMOS A FUERTEVENTURA! 🏝️</h2>
+        <p>¡Feliz cumpleaños, mi amor! Prepara la maleta pronto.</p>
+    </div>
+
+    <canvas id="mainCanvas"></canvas>
+
+    <script>
+        /**
+         * GAME CONFIGURATION & LOGIC (In English)
+         */
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score-count');
+        const winScreen = document.getElementById('success-screen');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let score = 0;
+        let isGameFinished = false;
+        
+        // Player object
+        const player = {
+            x: canvas.width / 2 - 35,
+            y: canvas.height - 100,
+            width: 70,
+            height: 70,
+            color: '#e84118'
+        };
+
+        const fallingItems = [];
+
+        // Input Handling (Touch for Mobile)
+        window.addEventListener('touchmove', (event) => {
+            if (isGameFinished) return;
+            const touchX = event.touches[0].clientX;
+            player.x = touchX - player.width / 2;
+            
+            // Boundary checks
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+        });
+
+        // Spawn items logic
+        function spawnItem() {
+            if (isGameFinished) return;
+            
+            const randomX = Math.random() * (canvas.width - 40);
+            fallingItems.push({
+                x: randomX,
+                y: -50,
+                speed: 4 + Math.random() * 4,
+                emoji: '🎁'
+            });
+
+            // Adjust difficulty/spawn rate
+            setTimeout(spawnItem, 800);
+        }
+
+        // Main Draw Loop
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Player (The "Basket")
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Simple decoration for the player box
+            ctx.fillStyle = '#fbc531';
+            ctx.fillRect(player.x + (player.width/2 - 5), player.y, 10, player.height);
+
+            // Update and Draw Items
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                const item = fallingItems[i];
+                item.y += item.speed;
+                
+                // Draw Emoji
+                ctx.font = '40px serif';
+                ctx.fillText(item.emoji, item.x, item.y);
+
+                // Collision Detection
+                if (
+                    item.y + 10 > player.y && 
+                    item.x > player.x - 20 && 
+                    item.x < player.x + player.width
+                ) {
+                    fallingItems.splice(i, 1);
+                    score++;
+                    scoreDisplay.innerText = score;
+
+                    if (score >= 10) {
+                        triggerWin();
+                    }
+                } 
+                // Remove if out of screen
+                else if (item.y > canvas.height) {
+                    fallingItems.splice(i, 1);
+                }
+            }
+
+            if (!isGameFinished) {
+                requestAnimationFrame(updateGame);
+            }
+        }
+
+        function triggerWin() {
+            isGameFinished = true;
+            winScreen.style.display = 'flex';
+        }
+
+        // Initialize
+        spawnItem();
+        updateGame();
+    </script>
+</body>
+</html>
