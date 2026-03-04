@@ -78,7 +78,7 @@
             fallingItems.push({
                 x: Math.random() * (canvas.width - 40),
                 y: -50,
-                speed: 5.5 + (score * 0.3), // Aumenta la velocidad según sube la puntuación
+                speed: 10 + (score * 0.3), // Aumenta la velocidad según sube la puntuación
                 emoji: '🎁'
             });
             spawnTimer = setTimeout(spawnItem, 1000 - (score * 50)); // Salen más rápido según avanzas
