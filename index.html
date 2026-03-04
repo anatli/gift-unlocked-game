@@ -3,150 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>¡Feliz Cumpleaños!</title>
+    <title>¡Reto de Cumpleaños!</title>
     <style>
-        /* General Styles */
-        body { margin: 0; overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #1a1a2e; font-family: sans-serif; touch-action: none; }
         canvas { display: block; background: linear-gradient(to bottom, #1e3c72, #2a5298); }
         
-        /* UI Score Counter */
         #ui-layer { 
             position: absolute; top: 20px; width: 100%; text-align: center; 
             color: #ffd700; font-size: 24px; font-weight: bold; pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* Success/Win Screen */
-        #success-screen { 
+        /* Pantallas de mensaje */
+        .overlay {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); color: white; text-align: center; 
-            justify-content: center; align-items: center; flex-direction: column; z-index: 100;
-            padding: 20px; box-sizing: border-box;
+            text-align: center; justify-content: center; align-items: center; flex-direction: column; 
+            z-index: 100; padding: 20px; box-sizing: border-box;
         }
 
-        .highlight-text { color: #00d2ff; font-size: 1.2em; margin-bottom: 10px; }
-        .reveal-title { color: #ffd700; font-size: 2.5em; margin: 20px 0; text-transform: uppercase; }
+        #success-screen { background: rgba(0,0,0,0.9); color: white; }
+        #loss-screen { background: rgba(139, 0, 0, 0.9); color: white; }
+
+        button {
+            padding: 15px 30px; font-size: 18px; background: #ffd700; border: none; 
+            border-radius: 25px; cursor: pointer; font-weight: bold; margin-top: 20px;
+        }
+
+        .reveal-title { color: #ffd700; font-size: 2.2em; margin: 20px 0; text-transform: uppercase; }
     </style>
 </head>
 <body>
-    <div id="ui-layer">Objetos encontrados: <span id="score-count">0</span>/10</div>
+    <div id="ui-layer">Regalos atrapados: <span id="score-count">0</span>/10</div>
     
-    <div id="success-screen">
-        <h1 style="color: #4cd137;">¡PRUEBA SUPERADA! 🏆</h1>
-        <p class="highlight-text">Has demostrado tener los reflejos necesarios para este regalo...</p>
-        <p>No es un código digital, ni una suscripción...</p>
+    <div id="success-screen" class="overlay">
+        <h1 style="color: #4cd137;">¡NIVEL COMPLETADO! 🏆</h1>
+        <p>Has demostrado tener unos reflejos increíbles...</p>
         <h2 class="reveal-title">✈️ ¡NOS VAMOS A FUERTEVENTURA! 🏝️</h2>
-        <p>¡Feliz cumpleaños, mi amor! Prepara la maleta pronto.</p>
+        <p>¡Feliz cumpleaños, mi amor! ❤️</p>
+    </div>
+
+    <div id="loss-screen" class="overlay">
+        <h1>¡OH NO! 😱</h1>
+        <p>Se te ha escapado un regalo... ¡No puedes dejar ninguno atrás!</p>
+        <button onclick="resetGame()">REINTENTAR</button>
     </div>
 
     <canvas id="mainCanvas"></canvas>
 
     <script>
-        /**
-         * GAME CONFIGURATION & LOGIC (In English)
-         */
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const scoreDisplay = document.getElementById('score-count');
         const winScreen = document.getElementById('success-screen');
+        const lossScreen = document.getElementById('loss-screen');
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
         let score = 0;
-        let isGameFinished = false;
-        
-        // Player object
-        const player = {
-            x: canvas.width / 2 - 35,
-            y: canvas.height - 100,
-            width: 70,
-            height: 70,
-            color: '#e84118'
-        };
+        let isGameActive = true;
+        const player = { x: canvas.width / 2 - 35, y: canvas.height - 100, width: 70, height: 70 };
+        let fallingItems = [];
+        let spawnTimer;
 
-        const fallingItems = [];
-
-        // Input Handling (Touch for Mobile)
-        window.addEventListener('touchmove', (event) => {
-            if (isGameFinished) return;
-            const touchX = event.touches[0].clientX;
-            player.x = touchX - player.width / 2;
-            
-            // Boundary checks
+        // Control táctil
+        window.addEventListener('touchmove', (e) => {
+            if (!isGameActive) return;
+            player.x = e.touches[0].clientX - player.width / 2;
             if (player.x < 0) player.x = 0;
             if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
         });
 
-        // Spawn items logic
         function spawnItem() {
-            if (isGameFinished) return;
-            
-            const randomX = Math.random() * (canvas.width - 40);
+            if (!isGameActive) return;
             fallingItems.push({
-                x: randomX,
+                x: Math.random() * (canvas.width - 40),
                 y: -50,
-                speed: 4 + Math.random() * 4,
+                speed: 3.5 + (score * 0.3), // Aumenta la velocidad según sube la puntuación
                 emoji: '🎁'
             });
-
-            // Adjust difficulty/spawn rate
-            setTimeout(spawnItem, 800);
+            spawnTimer = setTimeout(spawnItem, 1000 - (score * 50)); // Salen más rápido según avanzas
         }
 
-        // Main Draw Loop
         function updateGame() {
+            if (!isGameActive) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Draw Player (The "Basket")
-            ctx.fillStyle = player.color;
+            // Dibujar Jugador
+            ctx.fillStyle = '#e84118';
             ctx.fillRect(player.x, player.y, player.width, player.height);
-            // Simple decoration for the player box
             ctx.fillStyle = '#fbc531';
-            ctx.fillRect(player.x + (player.width/2 - 5), player.y, 10, player.height);
+            ctx.fillRect(player.x + 30, player.y, 10, player.height);
 
-            // Update and Draw Items
             for (let i = fallingItems.length - 1; i >= 0; i--) {
                 const item = fallingItems[i];
                 item.y += item.speed;
                 
-                // Draw Emoji
                 ctx.font = '40px serif';
                 ctx.fillText(item.emoji, item.x, item.y);
 
-                // Collision Detection
-                if (
-                    item.y + 10 > player.y && 
-                    item.x > player.x - 20 && 
-                    item.x < player.x + player.width
-                ) {
+                // Colisión (Atrapado)
+                if (item.y + 10 > player.y && item.x > player.x - 20 && item.x < player.x + player.width) {
                     fallingItems.splice(i, 1);
                     score++;
                     scoreDisplay.innerText = score;
-
-                    if (score >= 10) {
-                        triggerWin();
-                    }
+                    if (score >= 10) triggerWin();
                 } 
-                // Remove if out of screen
+                // PERDER: Si el regalo toca el suelo (pasa del alto de la pantalla)
                 else if (item.y > canvas.height) {
-                    fallingItems.splice(i, 1);
+                    triggerLoss();
                 }
             }
-
-            if (!isGameFinished) {
-                requestAnimationFrame(updateGame);
-            }
+            requestAnimationFrame(updateGame);
         }
 
         function triggerWin() {
-            isGameFinished = true;
+            isGameActive = false;
             winScreen.style.display = 'flex';
+            clearTimeout(spawnTimer);
         }
 
-        // Initialize
+        function triggerLoss() {
+            isGameActive = false;
+            lossScreen.style.display = 'flex';
+            clearTimeout(spawnTimer);
+        }
+
+        function resetGame() {
+            score = 0;
+            scoreDisplay.innerText = score;
+            fallingItems = [];
+            isGameActive = true;
+            lossScreen.style.display = 'none';
+            spawnItem();
+            updateGame();
+        }
+
         spawnItem();
         updateGame();
     </script>
 </body>
 </html>
+            
